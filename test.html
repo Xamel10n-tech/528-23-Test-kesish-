@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kesuvchi Asboblar - Imtihon Testi</title>
+    <style>
+        :root {
+            --primary: #007bff;
+            --success: #28a745;
+            --error: #dc3545;
+            --dark: #343a40;
+            --light: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #e9ecef;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            width: 100%;
+            max-width: 700px;
+            text-align: center;
+        }
+
+        h1 { color: var(--dark); margin-bottom: 10px; }
+        h2 { color: #495057; font-size: 1.2rem; margin-bottom: 20px; }
+        
+        .btn {
+            padding: 12px 30px;
+            margin: 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        .btn-primary { background-color: var(--primary); }
+        .btn-primary:hover { background-color: #0056b3; transform: translateY(-2px); }
+        
+        .btn-secondary { background-color: #6c757d; }
+        .btn-secondary:hover { background-color: #5a6268; }
+
+        .hidden { display: none; }
+
+        .question-box {
+            background: #f1f3f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--dark);
+        }
+
+        .options-list { list-style: none; padding: 0; }
+
+        .option-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 12px;
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 16px;
+            transition: all 0.2s;
+            color: var(--dark);
+        }
+
+        .option-btn:hover:not([disabled]) {
+            border-color: var(--primary);
+            background-color: #e7f1ff;
+        }
+
+        .option-btn.correct {
+            background-color: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .option-btn.wrong {
+            background-color: var(--error);
+            border-color: var(--error);
+            color: white;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #6c757d;
+            font-weight: bold;
+        }
+
+        #result-message {
+            font-size: 18px;
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+        
+        .score-circle {
+            width: 120px;
+            height: 120px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0 auto 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="menu-screen">
+            <h1>Kesuvchi Asboblar</h1>
+            <h2>Imtihonga tayyorlanish tizimi</h2>
+            <p>Rejimni tanlang:</p>
+            <button class="btn btn-primary" onclick="startApp('all')">📚 Barcha testlarni ishlash</button>
+            <br>
+            <button class="btn btn-success" style="background-color: #28a745;" onclick="startApp('exam')">⏱️ Imtihon rejimi (30 ta)</button>
+        </div>
+
+        <div id="quiz-screen" class="hidden">
+            <div class="stats-bar">
+                <span>Savol: <span id="current-q">1</span> / <span id="total-q">30</span></span>
+                <span>To'g'ri: <span id="live-score" style="color: green">0</span></span>
+            </div>
+            
+            <div id="question-text" class="question-box">Savol yuklanmoqda...</div>
+            
+            <div id="options-container" class="options-list"></div>
+            
+            <div id="feedback" style="min-height: 25px; margin-top:10px; font-weight:bold;"></div>
+            
+            <button id="next-btn" class="btn btn-primary hidden" onclick="nextQuestion()">Keyingi savol ➜</button>
+        </div>
+
+        <div id="result-screen" class="hidden">
+            <h2>Natijalar</h2>
+            <div class="score-circle">
+                <span id="final-score">0</span>
+            </div>
+            <p id="result-message"></p>
+            <button class="btn btn-primary" onclick="location.reload()">🔄 Qayta boshlash</button>
+        </div>
+    </div>
+
+    <script>
+        // SAVOLLAR BAZASI (Tozalangan va formatlangan)
+        const rawData = `
+Kesish kuchi (vertikal kuch) degani bu –?
+O‘q bo‘ylab yo‘nalishida, kesish yuzasiga ta’sir etadi
+#Kesish yuzasiga kesgichni bosuvchi kuch
+Bu kuch xomashyoning radiusi bo‘ylab yo‘nalgan
+Bu kuch kesmaga dastgohning , kesish yuzasiga ta’sir etadi
+Surish kuchi (o‘q bo‘ylab yo‘nalgan kuch) degani bu -?
+Bu kuch kesmaga yuqoridan dastgohning asosiy harakat yo‘nalishida, kesish yuzasiga ta’sir etadi
+Bu kuch xomashyoning radiusi bo‘ylab, yo‘nilayotgan xomashyoning o‘qiga perpendikulyar tarzda yo‘nalgan
+#Bu kuch yo‘nilayotgan xomashyoning o‘qi bo‘ylab ta’sir etadi
+Bu kuch kesmaga kesish yuzasiga ta’sir etadi (keskichni bosadi)
+Radial kuch degani bu-?
+Bu kuch yo‘nilayotgan xomashyoning surish yo‘nalishiga teskari yo‘nalishda ta’sir etadi
+#Bu kuch xomashyoning radiusi bo‘ylab, yo‘nilayotgan xomashyoning o‘qiga perpendikulyar tarzda yo‘nalgan
+Bu kuch kesmaga yuqoridan dastgohning asosiy harakat yo‘nalishida, kesish yuzasiga ta’sir etadi
+Bu kuch kesmaga dastgohning yordamchi harakat yo‘nalishida ta’sir etadi
+Asbobning yo‘nilayotgan materialga botib kirishini ta’minlovchi harakat qanday ataladi?
+# surish harakati
+bosh harakati
+ko‘ndalang harakat
+asosiy harakat
+Asbobning eyilishi natijasida quyidagilar sodir bo‘ladi:
+Eyilish asbobning zarblanishiga olib keladi
+#Asbobni o‘tmaslashuviga olib keladi
+Titrashiga sabab bo‘ladi
+Eyilish asbobning ishqalanishiga olib keladi
+Deformatsiya ta’sirida quyidagilar sodir bo‘ladi:
+Qatiqligi oshadi, mo‘rtlik pasayadi, metalning shakli o‘zgaradi, yuza qatlam kesish bosimi ta’siri ostida puxtalanadi
+Qatiqligi pasayadi, mo‘rtlik oshadi, metalning strukturasi o‘zgaradi, temperaturasi ta’siri ostida qatiqligi pasayadi
+#Qatiqligi oshadi, mo‘rtlik oshadi, metalning strukturasi o‘zgaradi, yuza qatlamning donalari maydalanadi, buning natijasida esa, puxtalangan qatlamning qatiqligi ortadi
+Qatiqligi pasayadi, mo‘rtlik oshadi, metalning strukturasi o‘zgarmaydi temperatura ta’siri ostida sirtqi qatlam yumshaydi
+Doiraviy jilvirlash usulida bo‘ylama surish degani bu-?
+Jilvirlash toshi yoki tayorlanmaning shpindeli bir necha marta aylanganda o‘q bo‘ylab siljishiga aytiladi
+#Asbob yoki tayorlanmaning shpindeli bir marta aylanganda - o\`q bo‘ylab siljishiga aytiladi
+Jilvirlash toshi yoki tayorlanmaning o‘q bo‘ylab siljishiga aytiladi
+Jilvirlash toshi yoki tayorlanmaning shpindeli ikki marta aylanishiga aytiladi
+Kesib ishlash qanday jarayon?
+Detalning ortiqcha qismini metal kesuvchi asboblar yordamida  toza yuzali buyum hosil qilish jarayoniga aytiladi
+Tayorlanma va  kesuvchi asboblarning birgalikdagi harakati hisobidan toza yuzali buyum hosil qilish jarayonidir
+#Tayorlanmani aniq o‘lchamli va toza yuzali detal hosil kilish jarayonidir
+Tayorlanmaning aniq bir qismini o‘lchash asboblar yordamida kesish yo‘li bilan buyum hosil qilish jarayonidir
+Kesish asboblarining jilvirlanib eyilish sabablari
+Bu eyilish tayorlanma va asbobning tutashish joyida sodir bo‘ladi
+#Xom ashyoning ishlov berilgan sirtiga ishkalanishi natijasida sodir bo‘ladi
+Bu eyilish ishqalanuvchi sirtlarning kata bosim ta’sirida sodir bo‘ladigan jarayon
+Bu detal va sirtning kata bosim ta’sirida siqilishida sodir bo‘ladi
+Kesish zonasida isiqlik oshsa nima qilinadi?
+#Asbobning turg‘unligi oshiriladi
+Kesish sharoiti yaxshilanadi
+Optimal kesish holati yaxshilanadi
+Kesish burchaklari charxlanadi
+Kesish asboblarining adgezion eyilishi bu...
+Bu eyilish xomashyoning metali va asbob ashyosining tutashish joyida erib, bir-biriga yoyilishi natijasida sodir bo‘ladi
+#Ishkalanuvchi sirtlarning bir-biriga yopishib asbobdan mayda zarachalar uzilib ajralishi natijasida sodir bo‘ladi
+Bu asbobning oldingi va ketingi sirti tayorlanmaning ishlov berilgan sirtiga ishqalanishi natijasida sodir bo‘ladi
+Bu eyilish xomashyoning metali va asbob ashyosining tutashish joyida erib, bir-biriga qo‘shilishidan sodir bo‘ladi
+Kesish jarayonini sodir qiladigan harakat?
+#Kesish tezligi va surish harakati
+Asosiy va yordamchi harakat
+Surish harakati bilan ko‘ndalang harakat
+Surish harakati va bo‘ylama harakat
+Kesish asboblarining diffuzion eyilishi bu-?
+Ishqalanuvchi sirtlarning kata bosim ta’sirida bir- biriga yopishish natijasida sodir bo‘lishi
+# Metal va asbobning o‘zaro tutashish joyida erib, bir-biriga ko‘shilishi natijasida sodir bo‘ladi
+Asbobning oldingi va ketingi sirti xomashyoning ishlov berilgan sirtiga ishqalanishidan sodir bo‘lishi
+Kesuvchi asboblarning ishqalanishi natijasida sodir bo‘lishi
+Kesish asboblarining eyilish turlari qaysilar?
+Diffuzion va abraziv eyilish
+Jilvirlanib va adgezion eyilish jarayonlari
+#Jilvirlanib, adgezion va diffuzion eyilish
+Adgezion bilan diffuzion eyilish
+Kesuvchi asboblarning eyilishi quyidagilarga bog‘liq:
+Asbob va dastgohning turiga, struktura holatiga, kesish tezligiga, kesish zonasidagi haroratga
+#Asbob va tayorlanma materialining fizik-mexanikaviy xosalariga, kesish rejimlariga
+Dastgohning moslamasiga va uning fizik-mexanikaviy hosalariga va struktura holatiga
+O‘lchash asbobining puxtaligiga va fizik-mexanikaviy hosalariga, struktura holatiga
+Kesish jarayonida keskichning oldingi yuzasida o‘simta hosil bo‘lishiga nimalar ta’sir qiladi?
+#Kesish tezligi va burchagi va ishlanadigan materialning qatiqligi
+Mashina vaqti va burchagi, qirqimning qalinligi, metalning qatiqligi
+Dona vaqti, ishlanadigan materialning qatiqligi
+Yilik dasturi va dona vaqti, qirqimning qalinligi
+Kesish jarayonida sarflanadigan mexanik energiya nimaga aylanadi?
+Isiqlik harakatiga aylanadi
+#Isiqlik energiyasiga aylanadi
+Jismoniy harakatga aylanadi
+Kinematik energiyaga aylanadi
+Kesish jarayonida o‘simta paydo bo‘lish xodisasini kim tomonidan taklif qilingan?
+#Usachоv YA
+Kucher M.
+Mirboboev T.M.
+Barbashov V.
+Kesish jarayonida o‘simta hosil bo‘lishi bilan oldingi burchak qanday o‘zgaradi?
+Oshadi
+#Kichrayadi
+Katalashadi
+Kengayadi
+Kesish jarayonining turlarini ko‘rsating.
+#Kesib ajratish, kesib olish, qirindi ajratish
+Qirindi ajratish, torets kesish va yo\`nib o\`tish
+Torets ishlov berish, kesib olish
+Kesib olib tashlash, kesib yo‘nish
+Kesish zonasida hosil bo‘lgan isiqlik qanday taqsimlanadi qiladi:
+Keskichni eyilishini yuzaga kelishiga sarflanadi
+#Qirindiga, kesuvchi asbobga, detal va atrof muhitga taksimlanadi
+Moslama aniqligini va ishlov berish aniqligini oshirishga sarflanadi
+Kesish asboblarini qizib ketishiga olib  keladi
+Kesish tezligi oshirilsa qanday kamchiliklar kelib chiqadi?
+#Kesuvchi asbob tez eyilib turg‘unligini pasaytiradi
+Kesuvchi asbob charxlanadi, turg‘unligini oshiradi
+Kesuvchi asbob eyilmaydi, kesuvchi asbobning turg‘unligi oshadi
+Kesuvchi asbob qiziydida turg‘unligi oshib ketadi
+Kesish tezligini oshirish bilan quyidagilar sodir bo‘ladi:
+Dastgohning ish unumi oshadi ammo detal yo‘nilgan yuzasining tozaligi pasayadi
+#Dastgohning ish unumi oshadi, yo‘nishga ketadigan asosiy texnologik vaqt kamayadi
+Dastgohning ish unumi pasayadi lekin yo‘nishga ketadigan asosiy texnologik vaqt kamayadi
+Dastgoh va asbobning ish unumi oshadi, yo‘nishga ketadigan asosiy texnologik vaqt ortadi
+Keskichning optimal burchaklari quyidagilarga qarab tanlanadi:
+Dastgohning modeliga, asbob turi va detal materialiga
+#Yo‘niladigan detalga,keskich materialiga va titrashga
+Tayorlanmaning materiali va asbob o‘lchamiga qarab tanlanadi
+Dastgoh moslamasi, asbob konstruksiyasi va tayorlanmaning og‘irligiga qarab tanlanadi
+Kesuvchi asboblarning jilvirlanib eyilishi bu...?
+#Asbobning oldingi va ketingi sirtiga va ishlov berilgan sirtiga ishkalanishi natijasida sodir bo‘ladi.
+Bu eyilish xomashyoning metali va asbob ashyosining tutashish joyida erib, bir-biriga qo‘shilishidan sodir bo‘ladi
+Bu eyilish xomashyoning metali va asbob ashyosining tutashish joyida erib, bir-biriga yoyilishi natijasida sodir bo‘ladi
+Ishqalanuvchi sirtlarning kata bosim ta’sirida bir-biriga yopishib asbobdan mayda zarachalar uzilib ajralishi natijasida sodir bo‘ladi
+Kesuvchi asbobning kesuvchi qismining geometrik parametrlari quyidagilarga ta’sir qiladi:
+Metal kesish asbobiga, keskichning mustahkamligiga kata ta’sir qiladi
+#Kesib olinayotgan qatlamining deformatsiyasiga, ishqalanishiga, kesish kuchi va tezligiga katta ta’sir qiladi
+Metalning kesib olinayotgan qatlami moslamaga, keskichning mustahkamligi va kesish tezligiga ta’sir qiladi
+Metalning kesib olinayotgan qatlami kesish kuchiga, keskichning mustahkamligiga ta’sir qiladi
+Kesuvchi asbob turg‘unligi bu-?
+Kesuvchi asbobning bir yuzadan ikkinchi yuzagacha ishlash mashina vaqti
+Kesuvchi asbobning kesish burchaklarining eyilish  vaqti
+#Asbobning bir charxlashdan ikkinchi charxlashgacha bo‘lgan vakti
+Kesuvchi asbobning termik ishlanuvchanlik  vaqti
+Qirindi turlarini ko‘rsating.
+Uzunchoq qirindi, pog‘onali qirindi, tutash qirindi
+#Uvoq, siniq, tutash (yaxlit) va pog‘onali qirindi
+SHakldor qirindi, pog‘onali qirindi, tutash qirindi
+Parchalangan qirindi, siniq qirindi, pog‘onali qirindi
+Radial kuch degani bu-?
+Bu kuch xomashyoni diametri bo‘ylab yo‘nilayotgan xomashyoni o‘qiga tik yo‘nalgan kuch
+#Radiusi bo‘ylab xomashyoning o‘qiga perpendikulyar tarzda yo‘nalgan kuch
+Bu kuch xomashyoni o‘qiga ko‘ndalang tarzda yo‘nalgan kuch
+Bu kuch xomashyoni yon tomoni bo‘ylab uning o‘qiga perpendikulyar tarzda yo‘nalgan
+Randalash degani bu . . .
+#Detall va asbobning bir vaqtda ilgarilanma - qaytma harakatlantirilishdir
+Material va asbobni to‘g‘ri chiziqli harakatlantirilib materialardan qirindi kesib ishlov berishdir
+O‘z o‘qiga nisbatan aylanma va ilgarilanma harakat qilib metalarga ariqchalar kesishdir
+O‘z o‘qiga nisbatan aylanma va ilgarilanma harakat qiluvchi buyumlarga ishlov berishdir
+Tutash qirindi degani nima?
+Bunda qirindi qatiq va kam qovishoq metalarni kesib ishlashda chiqadi
+#Kesish burchagi kichik bo‘lgan va asbobda katta tezlikda kesiladigan qirindi
+Bunday qirindi po‘latlarni o‘rtacha tezliklarda ishlashda chiqadi
+Termik ishlangan cho‘yan va yumshoq po‘lat ishlashda hosil bo‘lgan qirindi
+Uvoq qirindi qaysi holda hosil bo‘ladi?
+#Kesish burchagi katta bo‘lgandagi mo‘rt materialni kesishda
+Bunda qirindi qatiq va kam qovishoq metalarni kesib ishlashda chiqadi
+Bunda qirindi po‘latlarni o‘rtacha tezlikda kesishda hosil bo‘ladi
+Termik ishlangan yumshoq po‘latlarni kesishda hosil bo‘ladi
+Siniq qirindi degani bu-?
+Bunda qirindi qatiq va kam qovishoq metalarni kesib ishlashda chiqadi
+#Ko‘p uglerodli po‘latni kichik tezlik va kata surish bilan kesishda
+Bunda qirindi po‘latlarni o‘rtacha tezlikda kesib ishlashda chiqadi
+Termik ishlangan chuyan va alyuminiylarni kesib ishlashda chiqadi
+O‘yish degani bu . . .
+Materialarni bo‘ylanma tekislikda ilgarilanma qaytma harakatlanadigan keskich bilan kesib ishlash
+#Tayorlanmani vertikal tekislikda ilgarilanma - qaytma harakatda keskich  bilan kesib ishlash
+Tayorlanmalar sirtiga oynaday siliq qilib ishlov berish jarayoni
+Materialarning shakldor va tekis sirtiga ishlov berish jarayoni
+Sidirish qanday jarayon?
+#Turli shakldagi  qotishmalarni gorizontal tekislikda sidirib aniq o‘lchamga keltirish
+Materialarni turli tekislikda ilgarilanma qaytma harakatlanadigan asbob bilan kesib ishlash
+Materialar sirtiga oynaday siliq qilib ishlov berish jarayoniga aytiladi
+Tayorlanmalarning ichki va tashqi yuzalariga turli shaklarni hosil qilish jarayoniga aytiladi
+Teshikda shlitsalar  qanday asbobda ishlov beriladi?
+Parma va uygichbilan
+Metchik va kesgich bilan
+#Protyajka va uyish kesgich bilan
+Freza va protyajka bilan
+SHlitsa tashqi sirtlarga qaysi asboblar bilan hosil qilinadi?
+Parma va frezada
+#Protyajka va freza bilan
+Metchik va plashkada
+Zenker va kesgich bilan
+SHponka pazi teshikda qaysi asbob bilan kesiladi?
+#Sidirgich va uyish kesgichi bilan
+Parma va protyajka bilan
+Freza va randalash kesgich bilan
+Metchik va frezalar bilan
+SHponka pazi valda qaysi asbob bilan kesiladi?
+Plashka bilan
+#Frezada kesish
+Parmada kesish
+Metchik bilan
+Ichki teshiklarda qanday asboblar bilan ishlov beriladi?
+Parma, razvyortka, metchik, plashka, kesgichlar bilan
+#Protyajka, parma, zenker, razvyortka, metchik va kesgich
+Plashka, zenker, razvyortka, freza, kesgichlar bilan
+Freza, parma, grebyonka, dolbyak bilan
+Ishlov berishda elastik ko‘chishni boshqarish tasiri:
+Sifatiga ta’sir ko‘rsatmaydi
+#Sirt xosalarini oshiradi
+Sirt siliqligini oshiradi
+Detal sifatini oshiradi
+Erkin yuza nima?
+Detalning ishlov beriladigan yuzasi bilan ishlanmaydigan sirtlar oralig‘i
+#Detalning konstruktiv shaklini hosil qilish uchun zarur bo‘lgan yuzasi
+Detalning ishlov berilmaydigan yuzasi bilan bazalash sirti
+Detalning birikma hosil qiladigan konstruktiv shaklantirish uchun zarur bo‘lgan yuzasi
+Ichki rezbalar qaysi asboblar bilan kesiladi?
+Grebyonka bilan metchik
+#Metchik va kesgich bilan
+Freza va grebyonka bilan
+Sidirgich va metchik bilan
+Yo‘nishda surilishning ortishi detal sirtiga qanday ta’sir ko‘rsatadi?
+Ta’sir ko‘rsatmaydi
+#G‘adir-budirligini oshiradi
+Qatiqligini oshiradi
+Sirt tozaligi oshadi
+Qarama – qarshi frezalash nima?
+#Asbob va detal harakatining teskari yo‘nalishda bo‘lishi
+Freza va detal harakatining bir – biriga bog‘liqligi
+Freza va dastgoh harakatining nosinxronligi
+Freza va detal harakatining birxiligi
+Kesish kuchining stabiligi o‘lcham eyilishiga qanday ta’sir ko‘rsatadi?
+O‘lcham eyilishiga ta’sir ko‘rsatmaydi
+#O‘lcham eyilishini kamaytiradi
+O‘lcham eyilishini oshiradi
+O‘lcham eyilishini beqaror qiladi
+Kesish rejimini aniqlashda surilish qanday aniqlanadi?
+#Kesish chuqurligi va asbob mustahkamligiga mos holda
+Kesuvchi asbob shakliga mos holda
+Kesish tezligiga mos holda
+Materialning holatiga mos holda
+Kesish rejimini aniqlashda qirindi qatlami qanday aniqlanadi?
+Kesuvchi asbob shakliga mos holda
+#Ishlangan va ishlanmagan yuzaning farki bilan
+Kesish tezligining surishga mos holda
+Materialning mexanik xosalariga  mos holda
+Ko‘p keskichli tokarlik stanoklarida yo‘nish qanday amalga oshiriladi?
+Keskchning materialga kirib amalga oshiriladi
+Keskichning ko‘ndalang surilishi bilan amalga oshiriladi
+#Bo‘ylama va ko‘ndalang surilishlar bilan amalga oshiriladi
+Keskichning bo‘ylama surilishi bilan amalga oshiriladi
+Markazsiz jilvirlashda detal quyidagicha joylashtiriladi:
+#Ikkita jilvirtosh orasiga
+Stanok markazida joylashtiriladi
+Stanok stolida joylashtiriladi
+Uch kulachokli patronda joylashtiriladi
+Tishli g‘ildiraklarni kesishning qanday usularini bilasiz?
+# Frezalash, ko‘chirib olish va aylanib o‘tish usulari
+Aylanib o‘tish va kesib o‘tish usuli
+Ko‘chirib olish va nakatkalash usuli
+Kesib kirish va qirqish usuli
+Tashqi rezbalarni qaysi asboblar bilan kesilsdi:
+#Keskichlar,  grebyonkalar, plashkalar va frezalar bilan
+Grebenka, nakatkalash va plashkalar bilan
+Diskali va gurux frezalari bilan
+Faqat keskichlar bilan
+Ichki rezbalar qaysi asbobda qirqiladi?
+#Keskich va metchik bilan
+Grebenka, plashkalar bilan
+Diskali va gurux freza bilan
+Faqat keskichlar bilan
+Kesish jarayonida ajralib chiqadigan isiqlikning taqsimlanishini kim aniqlagan?
+#Ya.G.Usachev
+I.A.Time
+P.A.Afanasev
+A.K.Nartov
+YUqori tezliklar bilan kesishda qirindi bilan chiqib ketuvchi isiqlik miqdori necha foizni tashkil qiladi?
+#90% ga etishi aniqlandi
+75% ga etishi aniqlandi
+54% ga etishi aniqlandi
+36% ga etishi aniqlandi
+Kesuvchi asbob eyilishining ortishiga va turg‘unligining pasayishiga nima sabab bo‘ladi?
+#Isiqlik qirindi va kesuvchi asbobga o‘tganda
+Kesish zonasining qizib ketishida
+Kesuvchi asbobning qizib ketishida
+Detal sirtining puxtalanishi va  qirindi kirishganda
+Kesish vaqtida hosil bo‘ladigan temperaturaga ta’sir etuvchi asosiy faktorlarga nimalar kiradi?
+#Kesish tezligi, surish, kesish chuqurligi, asbob geometriyasi, kesilgan material va suyuqlikning ishlatilishi
+Kesish kuchi, asbob ko‘ndalang kesimining o‘lchamlari, yo‘nilayotgan material va suyuqlikning ishlatilish-ishlatmasligidir
+Kesuvchi asbobning o‘lchamlari, yo‘nilayotgan material va suyuqlikning ishlatilish-ishlatmasligidir
+Detal sirtining puxtalanishi, surish qiymati, kesish chuqurligi, asbobning geometriyasi, asbob ko‘ndalang kesimining o‘lchamlari
+Qirindi va kesuvchi asbobning qiziganlik darajasini qanday bilish mumkin?
+#Qirindi kesigining tovlanishidan
+Kesish zonasining qizishidan
+Kesuvchi asbobning qizishidan
+Detal sirtining puxtalanishidan
+Qatiq qotishmali plastinkalari bo‘lgan kesuvchi asboblarga sovutish suyuqligidan nega foydalanilmaydi?
+#Plastinkalar darz ketishi mumkin
+Kesish zonasidagi sirtning sifati buziladi
+Kesuvchi asbob tez eyilib sirt mo‘rtlashadi
+Detal sirti puxtalanadi va qirindi qizishidan
+Kesish rejimini aniqlashda tezlik qanday aniqlanadi?
+#Detal o‘lchami va dvigatelning aylanishlar soniga ko‘ra
+Kesuvchi asbob shakli va materialiga mos holda
+Kesishning surilishiga mos holda
+Materialning holatiga mos holda
+Kesuvchi asboblarning tana qismining materiali nimadan tayorlanadi?
+#Asbobsozlik, tezkesar va legirlangan po‘latdan
+Po‘lat, rangli metal qotishmalari va cho‘yandan
+Volfram ko‘p uglerodli po‘latlardan va metalokeramikadan
+Ko‘p uglerodli po‘latlar va metalokeramika
+Kesuvchi asboblarga qo‘yilgan talablar.
+#Otashbardosh, qattiq, puxta va eyilishga chidamli
+Plastik, qatiq va eyilishga chidamli xosalariga ega bo‘ladi
+Oquvchan, mustaxkam va eyilishga chidamli bo‘ladi
+Isiqbardosh, puxta va mustaxkam bo‘ladi
+Kesuvchi asboblarning vazifasi nimadan iborat?
+#Tayorlanmani talab qilingan shaklga keltirish
+Tayorlanmadan talab qilingan qirindi kesib olish
+Tayorlanmani shaklantirish
+Tayorlanmani kesib tushirish
+Kesish rejimi deb nimaga aytiladi?
+#Detaldan kirindi olib tashlash elementlariga aytiladi
+Zagatovkaning ma\`lum tezlikda aylanishiga aytiladi
+Hosil bo‘lgan qirindining surilishiga aytiladi
+Kesishning surilishi va qirindi qalinligiga aytiladi
+Kesish jarayoniga ta\`sir etuvchi kuch qaysi yo‘nalishda bo‘ladi?
+#Uchta tashkil etuvchi bo‘lib, bo‘ylama yo‘nalishda
+Radial kuch bo‘lib, ko‘ndalang yo‘nalishda
+Kesish tezligida bo‘lib, vertikal yo‘nalishda
+O‘qiy yo‘nalgan bo‘lib teskari yo‘nalishda
+Kesish tezligi nima bilan xarakterlanadi?
+#Kesilgan material turi va kesgich geometriyasi bilan
+Zagatovka bir aylanganda keskichning ko‘chishi bilan
+Qirindining ko‘ndalang kesim yuzasi bilan
+Kesish chuqurligi ortishi bilan tezlik ortadi
+Keskichning oldingi burchagi deb nimaga aytiladi?
+#Kesish tekisligi bilan oldingi yuza orasidagi burchak
+Kesuvchi qira bilan asosiy ketingi yuza orasidagi farq
+Oldingi yuza bilan ketingi yuza orasidagi farq
+Kesish tekisligi bilan oldingi yuza orasidagi burchak
+Qattiq qotishmalardan nima tayorlanadi?
+#Qirqish plastinkalari
+Kesuvchi asboblar
+Mashina detalari
+Meditsina buyumlari
+Kesish jarayonining turlari . . .
+#Kesib ajratish, kesib olish, kirindi ajratish.
+Torets ishlov berish ,kesib olish.
+Qirindi ajratish,torets kesish.
+Kesib olib tashlash,kesib yo‘nish.
+Asbobning yo‘nilayotgan materialga botib kirishini ta’minlovchi harakat bu...
+#YOrdamchi xarakat.
+Kesish xarakati (asosiy harakat).
+Ko‘ndalang harakat.
+YO\`nish harakati (asosiy harakat).
+Kesish jarayonida keskichning oldingi yuzasida,aniqsa kesuvchi qira yaqinida o‘sitma hosil bo‘lishiga quyidagilar ta’sir qiladi . . .
+#Kesish tezligi, asbob tig‘ining burchagi, qirindi kalinligi va detalning qattiqligi.
+Mashina vaqti va burchagi,qirqimning qalinligi va ishlanadigan materialning qatiqligi.
+Dona vakti, irkimning kalinligi va ishlanadigan materialning katakligi.
+Yilik dasturi va dona vaqti,qirqimning qalinligi va ishlanadigan materialning qatiqligi.
+Ishqalanuvchi sirtlarning kata bosim ta’sirida bir- biriga yopishishi , so‘ng asbob ashyosidan mayda zarachalarning uzilib ajralishi natijasida sodir bo‘ladi eyilish nima deyiladi?
+#Adgezion  eyilish
+Diffuzion eyilish
+Jilvirlanib eyilish
+Mavsumiy eyilish
+Kesish jarayonida yuzaga kelgan plastik deformatsiya natijasida deformatsiyalangan zonada nima hosil bo‘ladi
+Bushatish
+#Puxtalanish
+Isiqlik
+Bushatish
+Kesish jarayonida o‘simta paydo bo‘lishi xodisasini . . . tomonidan taklif kilingan
+#Usachev Ya. G.
+Kucher A.M.
+Mirboboev T.M.
+Barbashov V.A.
+Kesish jarayonida sarflanadigan mexanik energiya . . .
+Kinematik energiyaga aylanadi .
+Jismoniy harakatga aylanadi .
+#Isiqlik va harakatga aylanadi .
+Isiqlikga aylanadi .
+Kesish jarayonida moylash - sovutish suyuqligi ishlatilsa . . .
+#Kesish kuchi kamayadi va isiqlikning chetga chiqishi oshadi.
+Kesuvchi asbobning turg\`unligini oshiriladi.
+Optima kesish holatini tanlash osonlashadi.
+Kesish sharoiti yaxshilanadi va detal tez kesiladi.
+Kesish jarayonida sodir bo‘lgan titrash quyidagilarga ta’sir qiladi :
+#Asbob eyilishi, fizik-mexanik xossasi va strukturasi, kesish zonasidagi haroratga
+Keskichning va dastgohlarning yilishini oshirib yo‘nilgan yuza tozaligini pasaytiradi.
+SHablonlarning yilishini oshirib yo‘nilgan yuza tozaligini pasaytiradi.
+Moslamalarning va asbobni yilishini oshirib yo‘nilgan yuza tozaligini pasaytiradi.
+Kesish kuchi ( vertikal kuch) degani bu . . .
+#Kesiladigan detal va moslama o\`qi bo‘ylab surishga teskari yo‘nalishda ta’sir etadi
+Bu kuch keskichga yuqoridan dastgohning asosiy harakat yo‘nalishida, kesish yuzasiga o‘rinma bo‘ylab ta’sir etadi ( keskichni bosadi ).
+Bu kuch xomashyo radiusi bo‘ylab, yo‘nilaetgan tayorlanma o‘qiga perpendikulyar tarzda yo‘niladi.
+Bu kuch yunilayotgan moslama o‘qi bo‘ylab surish yo‘nalishiga teskari yo‘nalishda ta’sir etadi, va keskichni sindiradi.
+Abraziv material nima?
+#Metal mayda donalari va poroshokli birikma
+Kompozitsion va kukun material birikmalar
+Metal bulmagan mayda donli birikmalar
+Uncha qatiq bulmagan korundlar
+Frezalashda erishilgan yuza tozaligi.
+#6-7 yuza tozalik
+3-2 yuza tozalik
+6-4 yuza tozalik
+5-6 yuza tozalik
+Frezalash stanogidagi “Bo‘lish golovka” sining vazifasi.
+#Zagatovkalarni teng yoki tengmas bulaklarga bulish
+Kesuvchi asboblarni o\`rnatish yasash uchun
+Vintsimon arikchalarni frezalash uchun
+SHesterna va asboblarni yasash uchun
+Parmalashda asosiy xarakat .
+#Asbobning aylanma va ilgarilanma xarakati
+Detalning uz o\`qi atrofida aylanishi
+Parmaning aylanma xarakati
+Parma va detalning aylanma xarakati
+Parmalashda surish kuchining kamayish sababi.
+#Bosh burchagining ortishi bilan
+Kiyalik burchagi φ ning ortishi bilan
+Oldingi burchakning ortishi bilan
+Vint chiziklarining kiyaligi kamayishi bilan
+Parmadagi ω vintsimon arikchalarning kiyalik burchagining oshishi faktorlari .
+#O\`qiy kuch va burovchi moment kamayadi
+Burovchi moment ortadi
+Parma puxtaligi oshadi
+Surish kuchi ortadi
+Parma turgunligi nimaga boglik.
+#Kesish chuqurligiga
+Ishlanadigan detal sifatiga
+Kesish tezligiga
+Parma materialiga
+Zenkerlashdagi asbob turlari .
+#Konussimon, silindrik, torsovoy
+Silindrik va shakldor
+Silindsimon, toretsli, tekis yuzali
+Vintsimon, konusimon va silindrik
+Zenkerdagi tishlar sonining uzgarishi nimaga boglik .
+#Asbob diametriga
+Asbob materialiga
+Bajariladigan ishiga
+Geometrik parametrlariga
+Razvyortkalash deb nimaga aytiladi .
+#Anik yuza tozaligiga erishishga
+Teshik yuzidan yupka qirindi kesib olish usuliga
+Detaldagi teshikni anik ulchamga keltirishga
+Teshiklarni yunib kengaytirish usuliga
+Razvyortka turlari .
+#Vintsimon, shakldor, silindrik
+Silindrik, konusimon, shakldor
+Konusimon, silindrik, spiralsimon
+Silindrik, vintsimon, konusimon
+Keskich kalagida asosiy vazifani kaysi qismi bajaradi
+#Kesgich uchi
+Asosiy kesuvchi kirasi
+Asosiy ketingi yuzasi
+Oldingi yuzasi
+Randalashda asosiy xarakat .
+#Asbob va detalning birgalikdagi ishiga
+Ishlanadigan detalga beriladi
+Detalning kundalang yurishiga beriladi
+Kesuvchi asbobning to\`g\`ri chiziqli harakatiga beriladi
+Randalashdagi yuza tozaligi.
+#5- 8 klas
+2-3 klas
+4-5 klas
+5-6 klas
+Randalashda kesish tezligini xarakterlovchi faktorlar .
+#Zagatovka xossasi va kesgich geometriyasi
+Keskichning geometriyasi va materiali
+Zagatovkaning fizik-mexanik xosasi
+Zagatovka va keskich materialining xosasi
+Protyajkalashda bajariladigan ishlar .
+#SHakldor yuzalar va ochiq teshiklar
+Teshiklar, valar va tekisliklar
+Sirtqi yuza, ochik teshik, aylana jism
+Tekis yuza va aylanma jismlar
+Kesgichning oldingi “”burchagi kachon manfiy kilib tanlanadi.
+#Qattiq va mo\`rt materialga ishlov berganda
+Kesuvchi asbob puxtaligini oshirish uchun
+YUmshok va kovushok materialar uchun
+Detal va asbobning ishkalanishini kamaytirish uchun
+Jilvirlash asbobining boshka asboblardan oziga xos  farki .
+Bajariladigan vazifasi bilan
+Asbob materiali bilan
+#Kesuvchi qirrasining uzlukliligi bilan
+YUza tozaligi va konstruksiyasi bilan
+Parmadagi “ ω” vintsimon ariqchalarning qiyalik burchagining oshishi bilan .
+Surish kuchi ortadi
+Burovchi moment ortadi
+#Asbob puxtaligi oshadi
+O‘qiy kuch va burovchi moment kamayadi
+Kesish jarayonining turlarini kursating.
+YO\`nish, parmalash,frezalash va randalash
+YO\`nish, uyish va protyajkalash
+#Kesib ajratish, kesib olish, kirindi ajratish
+YO\`nib o‘tish, kesib tushirish
+Keskich nimaga asoslanib tanlanadi ?
+Kesuvchi asbobning geometriyasi va elementlariga
+Zagatovka ulchami va asbob turiga
+#Kesish rejimi elementi, zagatovka turiga
+Asbob va zagatovka materialiga
+Keskichni surish yunalishiga karab necha turga bulinadi ?
+To‘g\`ri va kesib tushiruvchi
+To‘g\`ri, unaqay va chapaqay
+#O‘naqay va chapaqay
+YO\`nib o‘tuvchi va kesib tushiruvchi
+Kesish tekisligi deb nimaga aytiladi ?
+kundalang surishga paralel tekislika
+buylama surishlarga paralel tekislika
+#Kesish yuzasiga paralel va oldingi yuzadan o\`tuvchi tekislik
+kesuvchi kiraning utuvchi, kesish yuzasiga urinma tekislika
+Keskichning oldingi burchagi deb nimaga aytiladi ?
+Oldingi yuza bilan ketingi yuza orasidagi fark
+Kesuvchi kira bilan asosiy ketingi yuza orasidagi fark
+#Kesuvchi qiradan o\`tgan tekislik bilan oldingi yuza orasidagi burchak
+Kesish tekisligi bilan oldingi yuza orasidagi burchak
+Kesish tezligi nima bilan xarakterlanadi ?
+Qirindining ko‘ndalang kesim yuzasi bilan
+Zagatovka bir aylanganda keskichning kuchishi bilan
+#Yonilayotgan material turi va keskich geometriyasi
+Kesish chuqurligi ortishi bilan tezlik ortadi
+Taroq freza, modul freza, barmoq freza qaysi dastgohda ishlatiladi?
+Uyish dastgohida
+Frezalash dastgohida
+Dolbyojniy dastgohida
+#Tish qirqish dastgohida
+Tokarlik dastgohida qaysi asboblar ishlatiladi?
+Parma, keskich, zenker va plashkalar
+Freza, keskichlar va metchik
+#Turli kesgichlar, parma va metchik
+Parma, keskich, zenker va freza
+Kesish rejimi elementlariga nimalar kiradi?
+o‘lchov asbobi, kesish asbobi
+keskich, moslama, detal
+#kesish va surish tezligi, kesish chuqurligi
+dastgoh, zagatovka
+Randalash stanogining turlari
+Ko‘ndalang, bo‘ylama, radial
+Bo‘ylama, vertikal, gorizontal
+#ko‘ndalang, bo‘ylama, o‘yish
+Gorizontal, vertikal va radial
+Frezalashda kesish tezligi qanday aniqlanadi.
+Zagatovka materiali, sovutgich sifati va kesish chukurligiga qarab
+Surish mikdori va turg‘unligiga karab
+#Asbob turg‘unligi va sovutish suyukligiga karab
+Freza va zagatovka materialiga karab
+Parmaning materiali
+CHo‘yan
+Rangli metal
+#Teskesar po‘lat
+Kam uglerodli po‘lat
+Diskli, barmoqli, kirmakli va taroqsimon asboblar qaysi turga mansub?
+Tokarlik keskichlari
+Parma turi
+#Frezalash turi
+Jilvir tosh
+Pat, spiral , markaz va peremichkali asboblar qaysi turga mansub?
+Freza turi
+Tokarlik asboblari
+#Parma turlari
+Jilvir tosh
+Legirlangan po‘latlar tarkibini asosiy tashkil etuvchilari
+bronza
+rangli metalar
+#qora metall
+latun
+Tokarlik keskichining qismlarini ko‘rsating
+Asosiy va yordamchi
+Ishchi, kalibrlovchi, bo‘yin
+#Tana va kallak qismi
+Ishchi kalibrlovchi
+Parmaning qismlarini ko‘rsating
+Asosiy va yordamchi
+Tana qismi va ishchi qismi
+#Ishchi, kalibrlovchi, dum
+Ishchi, kalibrlovchi
+Qaysi kesuvchi asbob bilan tish qirqish mumkin
+O‘tuvchi keskich
+Torets keskichi
+#Kirmakli freza
+Yo‘nuvchi keskich
+Teshiklarni yo‘nib kengaytirish qaysi kesuvchi asbob bilan bajariladi?
+Razvyortka
+Freza va parma
+#Zenker va kesgich
+Kesgich va razvyortka
+Teshiklarni yuza tozaligini oshirish uchun qaysi asbob qo‘laniladi
+Kesgich
+Parma
+#Razvyortka
+Zenker
+Ish va salt yurish jarayonida qaysi asbob ishlatiladi
+Frezalash keskichlari
+Tokarlik keskichlari
+#Randalash keskichi
+Parmalash keskichlari
+Metchikning vazifasi
+Torets yo‘nish
+Tish qirqish
+#Ichki rezba kesish
+Teshik ochish
+Plashkaning vazifasi
+Torets yo‘nish
+Tish qirqish
+#Tashqi rezba kesish
+Teshik ochish
+YOn sirt yo‘nishda qaysi kesuvchi asbob ishlatiladi?
+Rezba kesish
+Freza asbobi
+#Torets keskichi
+O‘tuvchi keskich
+Razvyortka nima maqsadda qo‘laniladi?
+Teshik hosil qilish uchun ishlatiladi
+Teshiklarni yo‘nib kengaytirish uchun ishlatiladi
+#Teshiklarni yuza tozaligini oshirish uchun
+Teshiklarga shakl berish uchun ishlatiladi
+Qirindilarni kesib olish usulari
+Yo\`nish, kesish va ajratish
+Bolg‘alash, shtamplash, prokatlash,preslash va quyish
+#Yo‘nish, o‘yish, parmalash, frezalash, protyajkalash
+Preslash, kiryalash va quyish
+Qirindi turlarini ko‘rsating
+Siniq va pog‘onali
+Uvoq, spiralsimon va siniq
+#Uvok, siniq, tutash, pog‘onali
+Tutash, uvoq va siniq
+Moylovchi-sovutuvchi suyuqliklari nima maqsadda ishlatiladi?
+Keskichning turg‘unligini oshirish maqsadida
+Kesish tezligini kamaytirish maqsadida
+#Keskich turg‘unligini va kesish tezligini oshirishda
+Kesish vaqtini kamaytirish maqsadida
+Keskichning turg‘unligini va kesish tezligini oshirish maqsadida jarayonda qanday yo‘l tutiladi?
+YAngi dastgohdan foydalaniladi
+O‘tkirlangan keskichdan foydalaniladi
+#Moylovchi-sovutuvchi suyuqlik ishlatiladi
+YAngi keskichdan foydalaniladi
+Keskichlar konstruksiyasiga ko‘ra turlarini ko‘rsating
+#Oddiy va shakldor
+Sifatli, sifatsiz
+Murakkab, oddiy
+O‘naqay, chapaqay
+Galtel keskichlarning vazifasi
+#sferik sirt yo‘nish
+Torets sirt yo‘nish
+Rezba kesish
+Tish qirqish
+Taroqsimon asbob nima maqsadda ishlatiladi?
+#Rezbalar kesishda
+Galtelar yo‘nishda
+Torets yo‘nishda
+Tish qirqishda
+Ichki halqasimon sirtni qaysi asbobda kesish mumkin?
+# Ariqcha kesgichi
+Rezbali kesgich
+Galtel kesgichi
+Torets kesgichi
+SHakldor disk frezalarning vazifasi
+#Burchak pazlar kesish
+Tekisliklar frezalash
+Tish frezalash
+SHlitsalar frezalash
+Moduli frezaning vazifasi
+#Tish qirqish
+Ariqchalar yo‘nish
+Rezbalar yo‘nish
+Galtel sirt yo‘nish
+O‘tuvchi keskichlar parametriga ko\`ra………….
+#Xomaki va tozalab yo‘nish
+Torets keskichlari
+Fason va ariqchali keskichlar
+Galtel keskichlar
+Tayorlanmaning ortiqcha qismini metal kesish dastgohlarida aniq o‘lchamli va toza yuzali detal hosil qilish jarayoni nima deb ataladi?
+#kesib ishlash
+qirindi ajratish
+parmalash
+frezalash
+Kesish jarayonida o‘simta hosil bo‘lishi bilan kesish tig\`i qanday o‘zgaradi
+kengayadi,
+o‘zgaradi
+katalashadi
+#kichrayadi
+Aniq geometrik o‘lchamli va tekis yuzali sirt tayorlash jarayoni nima deyiladi?
+#Jilvirlash
+Parmalash
+Frezalash
+Randalash
+Stanoklarda nima sababdan “Lyunet” moslamasi urnatiladi.
+#Zagatovka bikrligini ta’minlash uchun
+Zagatovka ni aniq joylashuvini ta’minlash uchun
+Xar xil kesimli zagatovkalarni urnatish uchun
+Doiraviy bulmagan detalarni urnatish uchun
+Tokarlik stanogidagi support kismining vazifasi nimadan iborat?
+Surishlar kutisiga xarakatni uzatishdan
+#Keskich xarakatini ta’minlashdan
+Salt yurishni chegaralashdan
+Zagatovkani urnatish va keskichni saklash
+`;
+
+        let questions = [];
+        let currentMode = 'all';
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let quizData = [];
+
+        // 1. Savollarni o'qib olish
+        function parseQuestions(text) {
+            // Bo'sh qatorlarni olib tashlaymiz
+            const lines = text.trim().split('\n').filter(line => line.trim() !== '');
+            let parsedQuestions = [];
+            
+            // Har 5 qator = 1 savol + 4 javob
+            for (let i = 0; i < lines.length; i += 5) {
+                // Agar 5 ta qator to'liq bo'lmasa, siklni to'xtatamiz
+                if (i + 4 >= lines.length) break;
+
+                let qObj = {
+                    question: lines[i].trim(),
+                    options: [],
+                    correctIndex: -1
+                };
+
+                for (let j = 1; j <= 4; j++) {
+                    let optionText = lines[i + j].trim();
+                    if (optionText.startsWith('#')) {
+                        qObj.correctIndex = j - 1; // 0-index
+                        optionText = optionText.substring(1).trim(); // # ni olib tashlash
+                    }
+                    qObj.options.push(optionText);
+                }
+                
+                // Ba'zida savollar ichida # bo'lmasa, xatolik chiqmasligi uchun tekshiramiz
+                if (qObj.correctIndex === -1) {
+                   // Agar to'g'ri javob belgilanmagan bo'lsa, birinchisini to'g'ri deb olamiz (faqat ehtiyot shart)
+                   qObj.correctIndex = 0; 
+                }
+
+                parsedQuestions.push(qObj);
+            }
+            return parsedQuestions;
+        }
+
+        // 2. Ilovani boshlash
+        function startApp(mode) {
+            questions = parseQuestions(rawData);
+            currentMode = mode;
+            score = 0;
+            currentQuestionIndex = 0;
+            document.getElementById('live-score').innerText = score;
+
+            if (mode === 'exam') {
+                // Tasodifiy 30 ta
+                let shuffled = questions.sort(() => 0.5 - Math.random());
+                quizData = shuffled.slice(0, 30);
+            } else {
+                // Barchasi
+                quizData = questions;
+            }
+
+            document.getElementById('menu-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            document.getElementById('total-q').innerText = quizData.length;
+            
+            loadQuestion();
+        }
+
+        // 3. Savolni ekranga chiqarish
+        function loadQuestion() {
+            const qData = quizData[currentQuestionIndex];
+            document.getElementById('current-q').innerText = currentQuestionIndex + 1;
+            document.getElementById('question-text').innerText = qData.question;
+            
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+            document.getElementById('feedback').innerText = '';
+            document.getElementById('next-btn').classList.add('hidden');
+
+            // Javoblarni aralashtirish (Variantlar har doim A,B,C,D o'rnini almashtiradi)
+            let indices = [0, 1, 2, 3];
+            indices.sort(() => Math.random() - 0.5);
+
+            indices.forEach(idx => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = qData.options[idx];
+                // Asl to'g'ri javob indexi bilan hozirgi indexni solishtiramiz
+                btn.onclick = () => checkAnswer(idx, qData.correctIndex, btn, indices, qData);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        // 4. Javobni tekshirish
+        function checkAnswer(selectedIndex, correctIndex, btnElement, indices, qData) {
+            const btns = document.querySelectorAll('.option-btn');
+            btns.forEach(b => b.disabled = true); // Barchasini bloklash
+
+            if (selectedIndex === correctIndex) {
+                btnElement.classList.add('correct');
+                document.getElementById('feedback').innerText = "✅ To'g'ri!";
+                document.getElementById('feedback').style.color = "var(--success)";
+                score++;
+                document.getElementById('live-score').innerText = score;
+            } else {
+                btnElement.classList.add('wrong');
+                document.getElementById('feedback').innerText = "❌ Noto'g'ri!";
+                document.getElementById('feedback').style.color = "var(--error)";
+                
+                // To'g'ri javobni ko'rsatib qo'yish
+                // Biz indices arrayidan foydalanib qaysi tugma to'g'ri ekanini topamiz
+                let correctBtnIndex = -1;
+                for(let i=0; i<4; i++) {
+                    if(indices[i] === correctIndex) correctBtnIndex = i;
+                }
+                if(correctBtnIndex !== -1) {
+                    btns[correctBtnIndex].classList.add('correct');
+                }
+            }
+
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+
+        // 5. Keyingisi
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < quizData.length) {
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        // 6. Natija
+        function showResults() {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            
+            const total = quizData.length;
+            const percent = Math.round((score / total) * 100);
+            
+            document.getElementById('final-score').innerText = `${score}/${total}`;
+            
+            let msg = "";
+            let color = "";
+            if (percent >= 85) { msg = "Juda yaxshi! 🔥<br>Siz materialni yaxshi o'zlashtiribsiz."; color = "green"; }
+            else if (percent >= 60) { msg = "Yaxshi. 👍<br>Lekin xatolarni ustida ishlash kerak."; color = "orange"; }
+            else { msg = "Qoniqarsiz. 😞<br>Iltimos, qaytadan o'qib chiqing."; color = "red"; }
+            
+            const resMsg = document.getElementById('result-message');
+            resMsg.innerHTML = msg;
+            resMsg.style.color = color;
+        }
+    </script>
+</body>
+</html>
